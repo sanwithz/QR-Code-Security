@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#087B40">
+  <title>ระบบตรวจรักษาความปลอดภัย</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- JQuery -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <!-- Loading Overlay -->
+  <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+
+  <!-- ApexCharts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- HTML5 QR Code scanner -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <!-- QR generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: '#087B40', brandDark: '#066233', soft: '#EAF5EE', surface: '#F7F9F8' } } }
+    }
+  </script>
+  <script src="./config.js"></script>
+  <script>
+    if (typeof API_URL === 'undefined' || !API_URL) {
+      window.API_URL = 'https://script.google.com/macros/s/AKfycbw_uC9nMA5ormEI5kzwo47oGXkolI0YW8lrYZJ0qEvmtaqSKfBHUSKOsJiCvQLZht_P7w/exec';
+    }
+  </script>
+
+  <style>
+    * { font-family: 'Prompt', sans-serif; }
+    body { background: #F7F9F8; color: #171717; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:18px; box-shadow:0 4px 20px rgba(0,0,0,.04); }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:12px; font-weight:600; transition:.15s; }
+    .btn:active { transform:scale(.98); }
+    .input { width:100%; border:1px solid #d1d5db; border-radius:12px; padding:.75rem .9rem; outline:none; background:#fff; }
+    .input:focus { border-color:#087B40; box-shadow:0 0 0 3px rgba(8,123,64,.1); }
+    .seg label { cursor:pointer; }
+    .seg input { display:none; }
+    .seg input:checked + span { background:#087B40; color:white; border-color:#087B40; }
+    .nav-active { color:#087B40; background:#EAF5EE; }
+    #scannerContainer { width:100% !important; border-radius:16px; overflow:hidden; background:#000; position:relative; }
+    #scannerContainer video { width:100% !important; border-radius:16px; display:block; }
+    #scannerContainer #qr-shaded-region { border-radius:16px !important; }
+    @media print { .no-print { display:none !important; } body { background:#fff; } }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200">
+  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-brand text-white grid place-items-center"><i class="fa-solid fa-shield-halved"></i></div>
+      <div>
+        <div id="appTitle" class="font-semibold leading-tight">ระบบตรวจรักษาความปลอดภัย</div>
+        <div class="text-xs text-gray-500">QR Patrol Check-in</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1 sm:gap-2">
+      <a href="./setting.html" target="_blank" class="btn px-3 py-2 text-sm text-gray-600 hover:text-brand hover:bg-gray-100" title="คู่มือติดตั้งและตั้งค่า"><i class="fa-solid fa-book-open"></i><span class="hidden sm:inline">คู่มือ</span></a>
+      <button id="btnAdminTop" class="btn px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"><i class="fa-solid fa-user-shield"></i><span class="hidden sm:inline">ผู้ดูแลระบบ</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-4 pb-28">
+  <!-- GUARD APP -->
+  <section id="guardView">
+    <div class="max-w-2xl mx-auto space-y-4">
+      <div class="card p-5 bg-gradient-to-br from-brand to-brandDark text-white border-0">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-white/70 text-sm">Security Patrol</p>
+            <h1 class="text-2xl font-semibold mt-1">สแกน QR จุดตรวจ</h1>
+            <p class="text-white/80 text-sm mt-2">สแกน QR ที่ติดตั้งประจำจุด แล้วกรอกรายงานการตรวจ</p>
+          </div>
+          <i class="fa-solid fa-qrcode text-5xl text-white/20"></i>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-5">
+          <button id="startScanBtn" class="btn w-full py-3 bg-white text-brand shadow hover:bg-gray-50"><i class="fa-solid fa-camera"></i> เปิดกล้องสแกน QR</button>
+          <button id="uploadQrBtn" class="btn w-full py-3 bg-white/15 hover:bg-white/25 text-white border border-white/20"><i class="fa-solid fa-image"></i> เลือกรูป / ถ่ายภาพ QR</button>
+        </div>
+        <input type="file" id="qrImageInput" accept="image/*" capture="environment" class="hidden">
+      </div>
+
+      <!-- GPS Status & Anti-Fraud Indicator -->
+      <div id="gpsBanner" class="p-3 bg-white border border-gray-200 rounded-2xl shadow-sm flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <div id="gpsIconWrap" class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 grid place-items-center text-sm shrink-0">
+            <i class="fa-solid fa-satellite fa-spin"></i>
+          </div>
+          <div>
+            <div class="text-[11px] text-gray-400 font-medium">ระบบป้องกันการทุจริต (Anti-Fraud GPS)</div>
+            <div id="gpsStatusText" class="text-xs font-bold text-gray-700">กำลังตรวจจับสัญญาณดาวเทียม GPS...</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 font-semibold rounded-full border border-emerald-200">
+            ระยะไม่เกิน 50 ม.
+          </span>
+          <button id="refreshGpsBtn" type="button" class="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 grid place-items-center text-xs transition" title="อัปเดตพิกัด GPS">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="scannerCard" class="card p-4 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div class="font-semibold text-gray-800">กล้องสแกนจุดตรวจ</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="switchCameraBtn" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-camera-rotate"></i> สลับกล้อง
+            </button>
+            <button id="stopScanBtn" class="w-8 h-8 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 grid place-items-center transition">
+              <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+          </div>
+        </div>
+        <div class="relative overflow-hidden rounded-2xl bg-black min-h-[260px] flex items-center justify-center">
+          <div id="scannerContainer" class="w-full"></div>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-2 mt-3 pt-2">
+          <p id="scannerStatus" class="text-sm text-gray-500 text-center sm:text-left">นำกล้องไปส่อง QR จุดตรวจ</p>
+          <button id="scannerUploadBtn" class="text-xs text-brand font-medium hover:underline inline-flex items-center gap-1">
+            <i class="fa-solid fa-image"></i> หรือเลือกรูปภาพ QR จากเครื่อง
+          </button>
+        </div>
+      </div>
+
+      <div id="checkpointCard" class="card p-5 hidden">
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 rounded-xl bg-soft text-brand grid place-items-center shrink-0"><i class="fa-solid fa-location-dot"></i></div>
+          <div class="min-w-0">
+            <div class="text-xs text-gray-500">จุดตรวจ</div>
+            <div id="checkpointName" class="font-semibold text-lg"></div>
+            <div id="checkpointMeta" class="text-sm text-gray-500 mt-1"></div>
+          </div>
+          <button id="changeCheckpointBtn" class="ml-auto text-sm text-brand font-medium">เปลี่ยน</button>
+        </div>
+        <div id="checkpointGpsResult" class="mt-3.5 pt-3 border-t border-gray-100 hidden"></div>
+      </div>
+
+      <form id="reportForm" class="card p-5 space-y-5 hidden">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div>
+            <div class="font-semibold text-lg">รายงานการตรวจ</div>
+            <div id="liveTime" class="text-sm text-gray-500"></div>
+          </div>
+          <i class="fa-solid fa-clipboard-check text-2xl text-brand"></i>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium block mb-2">ชื่อ รปภ. <span class="text-red-500">*</span></label>
+          <select id="guardSelect" class="input" required><option value="">กำลังโหลด...</option></select>
+        </div>
+
+        <div class="space-y-4">
+          <div><label class="text-sm font-medium block mb-2">สถานการณ์</label><div class="seg grid grid-cols-3 gap-2">
+            <label><input type="radio" name="situation" value="ปกติ" checked><span class="block text-center border rounded-xl py-2 text-sm">ปกติ</span></label>
+            <label><input type="radio" name="situation" value="เฝ้าระวัง"><span class="block text-center border rounded-xl py-2 text-sm">เฝ้าระวัง</span></label>
+            <label><input type="radio" name="situation" value="เร่งด่วน"><span class="block text-center border rounded-xl py-2 text-sm">เร่งด่วน</span></label>
+          </div></div>
+
+          <div><label class="text-sm font-medium block mb-2">พบช่องทาง/ร่องรอยหลบหนี</label><div class="seg grid grid-cols-2 gap-2">
+            <label><input type="radio" name="escapeTrace" value="ไม่พบ" checked><span class="block text-center border rounded-xl py-2 text-sm">ไม่พบ</span></label>
+            <label><input type="radio" name="escapeTrace" value="พบ"><span class="block text-center border rounded-xl py-2 text-sm">พบ</span></label>
+          </div></div>
+
+          <div><label class="text-sm font-medium block mb-2">ไฟส่องสว่าง</label><div class="seg grid grid-cols-2 gap-2">
+            <label><input type="radio" name="lighting" value="ปกติ" checked><span class="block text-center border rounded-xl py-2 text-sm">ปกติ</span></label>
+            <label><input type="radio" name="lighting" value="ผิดปกติ"><span class="block text-center border rounded-xl py-2 text-sm">ผิดปกติ</span></label>
+          </div></div>
+
+          <div><label class="text-sm font-medium block mb-2">บุคคลต้องสงสัย</label><div class="seg grid grid-cols-2 gap-2">
+            <label><input type="radio" name="suspiciousPerson" value="ไม่พบ" checked><span class="block text-center border rounded-xl py-2 text-sm">ไม่พบ</span></label>
+            <label><input type="radio" name="suspiciousPerson" value="พบ"><span class="block text-center border rounded-xl py-2 text-sm">พบ</span></label>
+          </div></div>
+
+          <div><label class="text-sm font-medium block mb-2">สิ่งของผิดปกติ</label><div class="seg grid grid-cols-2 gap-2">
+            <label><input type="radio" name="abnormalItem" value="ไม่พบ" checked><span class="block text-center border rounded-xl py-2 text-sm">ไม่พบ</span></label>
+            <label><input type="radio" name="abnormalItem" value="พบ"><span class="block text-center border rounded-xl py-2 text-sm">พบ</span></label>
+          </div></div>
+        </div>
+
+        <div><label class="text-sm font-medium block mb-2">รายละเอียดเพิ่มเติม</label><textarea id="details" class="input min-h-24" placeholder="ระบุรายละเอียด (ถ้ามี)"></textarea></div>
+        <div><label class="text-sm font-medium block mb-2">การดำเนินการ</label><textarea id="actionTaken" class="input min-h-24" placeholder="ระบุการดำเนินการ (ถ้ามี)"></textarea></div>
+
+        <button class="btn w-full py-3 bg-brand text-white hover:bg-brandDark" type="submit"><i class="fa-solid fa-paper-plane"></i> ส่งรายงาน</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ADMIN LOGIN -->
+  <section id="adminLoginView" class="hidden max-w-md mx-auto mt-10">
+    <div class="card p-6">
+      <div class="w-14 h-14 rounded-2xl bg-soft text-brand grid place-items-center mx-auto text-xl"><i class="fa-solid fa-user-shield"></i></div>
+      <h2 class="text-xl font-semibold text-center mt-4">ผู้ดูแลระบบ</h2>
+      <p class="text-sm text-gray-500 text-center mt-1">เข้าสู่ระบบเพื่อดูรายงานและจัดการข้อมูล</p>
+      <form id="adminLoginForm" class="space-y-4 mt-6">
+        <input id="adminPassword" type="password" class="input" placeholder="รหัสผ่านผู้ดูแล" autocomplete="current-password" required>
+        <button class="btn w-full py-3 bg-brand text-white" type="submit"><i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ</button>
+        <button id="backToGuardBtn" class="btn w-full py-3 bg-gray-100 text-gray-700" type="button">กลับหน้าสแกน</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ADMIN APP -->
+  <section id="adminView" class="hidden space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div><h2 class="text-2xl font-semibold">Dashboard</h2><p class="text-sm text-gray-500">ภาพรวมระบบตรวจรักษาความปลอดภัย</p></div>
+      <div class="flex flex-wrap gap-2">
+        <a href="./setting.html" target="_blank" class="btn px-3 sm:px-4 py-2 bg-white border hover:bg-gray-50 text-gray-700 text-sm"><i class="fa-solid fa-book-open"></i> <span class="hidden sm:inline">คู่มือตั้งค่า</span></a>
+        <button id="refreshAdminBtn" class="btn px-3 sm:px-4 py-2 bg-white border"><i class="fa-solid fa-rotate"></i> รีเฟรช</button>
+        <button id="logoutBtn" class="btn px-3 sm:px-4 py-2 bg-gray-900 text-white"><i class="fa-solid fa-arrow-right-from-bracket"></i> ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="card p-4"><div class="text-sm text-gray-500">ตรวจวันนี้</div><div id="statToday" class="text-3xl font-semibold mt-1">0</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-500">จุดตรวจที่ใช้งาน</div><div id="statCheckpoints" class="text-3xl font-semibold mt-1">0</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-500">เฝ้าระวัง</div><div id="statWatch" class="text-3xl font-semibold mt-1 text-amber-600">0</div></div>
+      <div class="card p-4"><div class="text-sm text-gray-500">เร่งด่วน</div><div id="statUrgent" class="text-3xl font-semibold mt-1 text-red-600">0</div></div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-4">
+      <div class="card p-4"><div class="font-semibold mb-2">จำนวนการตรวจ 7 วันล่าสุด</div><div id="dailyChart"></div></div>
+      <div class="card p-4"><div class="font-semibold mb-2">สถานการณ์วันนี้</div><div class="h-72"><canvas id="situationChart"></canvas></div></div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="flex overflow-x-auto border-b bg-gray-50">
+        <button class="admin-tab px-5 py-3 text-sm font-medium nav-active" data-tab="reports"><i class="fa-solid fa-clipboard-list mr-2"></i>รายงาน</button>
+        <button class="admin-tab px-5 py-3 text-sm font-medium" data-tab="guards"><i class="fa-solid fa-users mr-2"></i>รปภ.</button>
+        <button class="admin-tab px-5 py-3 text-sm font-medium" data-tab="checkpoints"><i class="fa-solid fa-location-dot mr-2"></i>จุดตรวจ</button>
+        <button class="admin-tab px-5 py-3 text-sm font-medium" data-tab="qr"><i class="fa-solid fa-qrcode mr-2"></i>QR Codes</button>
+      </div>
+
+      <div id="tabReports" class="admin-panel p-4">
+        <div class="flex flex-col sm:flex-row gap-2 mb-4"><input id="reportSearch" class="input" placeholder="ค้นหา รปภ. / จุดตรวจ / Report ID"><select id="reportSituation" class="input sm:max-w-48"><option value="">ทุกสถานการณ์</option><option>ปกติ</option><option>เฝ้าระวัง</option><option>เร่งด่วน</option></select></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left bg-gray-50"><tr><th class="p-3">เวลา</th><th class="p-3">จุดตรวจ</th><th class="p-3">รปภ.</th><th class="p-3">สถานการณ์</th><th class="p-3">รายละเอียด</th></tr></thead><tbody id="reportsBody"></tbody></table></div>
+      </div>
+
+      <div id="tabGuards" class="admin-panel p-4 hidden">
+        <div class="flex justify-between items-center mb-4"><div class="font-semibold">รายชื่อ รปภ.</div><button id="addGuardBtn" class="btn px-4 py-2 bg-brand text-white"><i class="fa-solid fa-plus"></i> เพิ่ม รปภ.</button></div>
+        <div id="guardsList" class="grid md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div id="tabCheckpoints" class="admin-panel p-4 hidden">
+        <div class="flex justify-between items-center mb-4"><div class="font-semibold">จุดตรวจ</div><button id="addCheckpointBtn" class="btn px-4 py-2 bg-brand text-white"><i class="fa-solid fa-plus"></i> เพิ่มจุดตรวจ</button></div>
+        <div id="checkpointList" class="grid md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div id="tabQr" class="admin-panel p-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="font-semibold text-lg">QR Codes จุดตรวจ</div>
+            <div class="text-sm text-gray-500">QR จะเปิดหน้าเว็บพร้อมระบุจุดตรวจอัตโนมัติ</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="./print-checkpoints.html" target="_blank" class="btn px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm">
+              <i class="fa-solid fa-file-invoice"></i> ออกแบบ & พิมพ์ป้าย QR
+            </a>
+            <button id="printAllQrBtn" class="btn px-4 py-2 bg-gray-900 hover:bg-black text-white text-sm">
+              <i class="fa-solid fa-print"></i> พิมพ์ทันที
+            </button>
+          </div>
+        </div>
+        <div id="qrGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="fixed bottom-0 left-0 right-0 bg-white border-t sm:hidden no-print z-20">
+  <div class="grid grid-cols-2 max-w-md mx-auto">
+    <button id="mobileGuardNav" class="py-3 text-sm nav-active"><i class="fa-solid fa-qrcode block mb-1"></i>ตรวจจุด</button>
+    <button id="mobileAdminNav" class="py-3 text-sm text-gray-500"><i class="fa-solid fa-user-shield block mb-1"></i>ผู้ดูแล</button>
+  </div>
+</div>
+
+<!-- TAILWIND MODALS CONTAINER -->
+
+<!-- 1. Guard Modal (เพิ่ม / แก้ไข รปภ.) -->
+<div id="guardModal" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-sm hidden transition-all duration-200 overflow-y-auto">
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 flex flex-col max-h-[calc(100dvh-1.25rem)] sm:max-h-[calc(100dvh-2.5rem)] overflow-hidden transform transition-all duration-200 scale-95 opacity-0 modal-panel my-auto">
+    <div class="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
+      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-soft text-brand grid place-items-center text-base sm:text-lg flex-shrink-0">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 id="guardModalTitle" class="font-semibold text-gray-900 text-base sm:text-lg leading-tight truncate">จัดการข้อมูล รปภ.</h3>
+          <p class="text-xs text-gray-500 truncate">บันทึกข้อมูลเจ้าหน้าที่ตรวจการ</p>
+        </div>
+      </div>
+      <button type="button" class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 grid place-items-center transition flex-shrink-0 ml-2" onclick="closeTailwindModal('guardModal')">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+    <form id="guardModalForm" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <input type="hidden" id="guardModalId">
+      <div class="p-3.5 sm:p-5 space-y-3 sm:space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">ชื่อ - นามสกุล <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">
+              <i class="fa-regular fa-user"></i>
+            </span>
+            <input type="text" id="guardModalName" class="input pl-9 sm:pl-10 text-xs sm:text-sm py-2 sm:py-2.5" placeholder="เช่น นายสมชาย ปลอดภัย" required autocomplete="off">
+          </div>
+        </div>
+        <div>
+          <label class="flex items-center gap-2.5 p-2.5 sm:p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+            <input type="checkbox" id="guardModalActive" class="w-4 h-4 sm:w-5 sm:h-5 text-brand rounded focus:ring-brand accent-brand cursor-pointer" checked>
+            <div>
+              <div class="text-xs sm:text-sm font-medium text-gray-800">เปิดใช้งาน (Active)</div>
+              <div class="text-[11px] sm:text-xs text-gray-500">สามารถเลือกชื่อนี้ในรายงานจุดตรวจได้</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-gray-50/90 border-t border-gray-100 flex-shrink-0">
+        <button type="button" class="btn px-4 py-2 sm:py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs sm:text-sm font-medium" onclick="closeTailwindModal('guardModal')">ยกเลิก</button>
+        <button type="submit" id="guardModalSubmitBtn" class="btn px-5 py-2 sm:py-2.5 bg-brand text-white hover:bg-brandDark text-xs sm:text-sm font-medium shadow-sm shadow-brand/20">
+          <i class="fa-solid fa-check mr-1.5"></i> บันทึกข้อมูล
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 2. Checkpoint Modal (เพิ่ม / แก้ไข จุดตรวจ) -->
+<div id="checkpointModal" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 backdrop-blur-sm hidden transition-all duration-200 overflow-y-auto">
+  <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-100 flex flex-col max-h-[calc(100dvh-1.25rem)] sm:max-h-[calc(100dvh-2.5rem)] overflow-hidden transform transition-all duration-200 scale-95 opacity-0 modal-panel my-auto">
+    <div class="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
+      <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-soft text-brand grid place-items-center text-base sm:text-lg flex-shrink-0">
+          <i class="fa-solid fa-location-dot"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 id="checkpointModalTitle" class="font-semibold text-gray-900 text-base sm:text-lg leading-tight truncate">จัดการข้อมูลจุดตรวจ</h3>
+          <p class="text-xs text-gray-500 truncate">กำหนดจุดตรวจสำหรับพิมพ์ QR Code</p>
+        </div>
+      </div>
+      <button type="button" class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 grid place-items-center transition flex-shrink-0 ml-2" onclick="closeTailwindModal('checkpointModal')">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+    <form id="checkpointModalForm" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <input type="hidden" id="checkpointModalId">
+      <div class="p-3.5 sm:p-5 space-y-3 sm:space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">ชื่อจุดตรวจ <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-sm">
+              <i class="fa-solid fa-map-pin"></i>
+            </span>
+            <input type="text" id="checkpointModalName" class="input pl-9 sm:pl-10 text-xs sm:text-sm py-2 sm:py-2.5" placeholder="เช่น ประตูทางเข้า 1 หรือ บันไดหนีไฟ ชั้น 2" required autocomplete="off">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">รหัสป้อม/จุด (PostID) <span class="text-red-500">*</span></label>
+            <input type="text" id="checkpointModalPost" class="input text-xs sm:text-sm py-2 sm:py-2.5" placeholder="เช่น POST01, P1" required autocomplete="off">
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">พื้นที่ / โซน (Zone)</label>
+            <input type="text" id="checkpointModalZone" class="input text-xs sm:text-sm py-2 sm:py-2.5" placeholder="เช่น อาคาร A, ลานจอดรถ" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- GPS Geofence Settings (Anti-Fraud) -->
+        <div class="p-3 sm:p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 grid place-items-center text-xs flex-shrink-0">
+                <i class="fa-solid fa-satellite-dish"></i>
+              </span>
+              <span class="text-xs font-bold text-emerald-950">พิกัด GPS ประจำจุดตรวจ (ป้องกันทุจริต 50 ม.)</span>
+            </div>
+            <button type="button" id="getCurrentLocationForModalBtn" class="btn px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 text-xs font-semibold rounded-lg shadow-sm transition">
+              <i class="fa-solid fa-crosshairs text-emerald-600"></i> ปักหมุดที่ฉันยืนอยู่
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[11px] font-medium text-gray-600 mb-0.5">ละติจูด (Latitude)</label>
+              <input type="number" step="any" id="checkpointModalLat" class="input text-xs font-mono py-1.5 px-2" placeholder="เช่น 13.7563">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-gray-600 mb-0.5">ลองจิจูด (Longitude)</label>
+              <input type="number" step="any" id="checkpointModalLng" class="input text-xs font-mono py-1.5 px-2" placeholder="เช่น 100.5018">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-medium text-gray-600 mb-0.5">รัศมีตรวจ (เมตร)</label>
+              <input type="number" id="checkpointModalRadius" class="input text-xs font-mono font-bold text-emerald-700 py-1.5 px-2" value="50" min="10" max="500">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between text-[11px] text-gray-500 pt-0.5 gap-1">
+            <span>รปภ. ต้องอยู่ในรัศมีไม่เกิน 50 เมตรจึงจะสแกนได้</span>
+            <a id="modalMapLink" href="#" target="_blank" class="text-emerald-700 hover:underline font-medium hidden inline-flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> ดูบน Maps
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2.5 p-2.5 sm:p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+            <input type="checkbox" id="checkpointModalActive" class="w-4 h-4 sm:w-5 sm:h-5 text-brand rounded focus:ring-brand accent-brand cursor-pointer" checked>
+            <div>
+              <div class="text-xs sm:text-sm font-medium text-gray-800">เปิดใช้งาน (Active)</div>
+              <div class="text-[11px] sm:text-xs text-gray-500">เปิดให้สามารถสแกน QR Code เพื่อตรวจจุดนี้ได้</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Sticky Footer -->
+      <div class="flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-gray-50/90 border-t border-gray-100 flex-shrink-0">
+        <button type="button" class="btn px-4 py-2 sm:py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs sm:text-sm font-medium" onclick="closeTailwindModal('checkpointModal')">ยกเลิก</button>
+        <button type="submit" id="checkpointModalSubmitBtn" class="btn px-5 py-2 sm:py-2.5 bg-brand text-white hover:bg-brandDark text-xs sm:text-sm font-medium shadow-sm shadow-brand/20">
+          <i class="fa-solid fa-check mr-1.5"></i> บันทึกข้อมูล
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 3. Confirm Modal (ยืนยันการทำรายการ) -->
+<div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm hidden transition-all duration-200 overflow-y-auto">
+  <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 p-5 sm:p-6 text-center transform transition-all duration-200 scale-95 opacity-0 modal-panel my-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
+    <div id="confirmModalIcon" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-50 text-amber-500 mx-auto flex items-center justify-center text-2xl sm:text-3xl mb-3 sm:mb-4">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <h3 id="confirmModalTitle" class="text-lg sm:text-xl font-bold text-gray-900 mb-1.5 sm:mb-2">ยืนยันการทำรายการ</h3>
+    <div id="confirmModalBody" class="text-gray-600 text-xs sm:text-sm mb-5 sm:mb-6 leading-relaxed"></div>
+    <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <button id="confirmModalCancelBtn" class="btn py-2 sm:py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs sm:text-sm font-semibold">ยกเลิก</button>
+      <button id="confirmModalConfirmBtn" class="btn py-2 sm:py-2.5 bg-brand text-white hover:bg-brandDark text-xs sm:text-sm font-semibold">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Alert / Message Modal (แจ้งเตือนสถานะต่างๆ) -->
+<div id="alertModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm hidden transition-all duration-200 overflow-y-auto">
+  <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-gray-100 p-5 sm:p-6 text-center transform transition-all duration-200 scale-95 opacity-0 modal-panel my-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
+    <div id="alertModalIcon" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl mx-auto flex items-center justify-center text-2xl sm:text-3xl mb-3 sm:mb-4"></div>
+    <h3 id="alertModalTitle" class="text-lg sm:text-xl font-bold text-gray-900 mb-1.5 sm:mb-2"></h3>
+    <div id="alertModalBody" class="text-gray-600 text-xs sm:text-sm mb-5 sm:mb-6 leading-relaxed"></div>
+    <button id="alertModalBtn" class="btn w-full py-2.5 sm:py-3 bg-brand text-white hover:bg-brandDark text-sm sm:text-base font-semibold shadow-sm shadow-brand/20">ตกลง</button>
+  </div>
+</div>
+
+<!-- 5. Toast Container (การแจ้งเตือนมุมบนขวา) -->
+<div id="toastContainer" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+<script>
+let guards = [];
+let currentCheckpoint = null;
+let html5QrCode = null;
+let currentFacingMode = 'environment';
+let isScannerStarting = false;
+let currentGps = null;
+let verifiedScanGps = null;
+let isGpsSearching = false;
+const GPS_LOCAL_KEY = 'patrol_checkpoint_coords';
+let adminData = null;
+let dailyChart = null;
+let situationChart = null;
+const ADMIN_TOKEN_KEY = 'security_admin_session';
+
+$(document).ready(async function() {
+  bindEvents();
+  initGpsWatcher();
+  updateClock();
+  setInterval(updateClock, 1000);
+  await loadBootstrap();
+
+  const token = new URLSearchParams(location.search).get('token');
+  if (token) await selectCheckpoint(token);
+});
+
+function bindEvents() {
+  $('#startScanBtn').on('click', startScanner);
+  $('#stopScanBtn').on('click', stopScanner);
+  $('#switchCameraBtn').on('click', switchCamera);
+  $('#refreshGpsBtn').on('click', () => fetchCurrentPosition(true));
+  $('#getCurrentLocationForModalBtn').on('click', fillModalGps);
+  $('#uploadQrBtn, #scannerUploadBtn').on('click', () => $('#qrImageInput').click());
+  $('#qrImageInput').on('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (file) scanFromImageFile(file);
+    $(this).val('');
+  });
+  $('#changeCheckpointBtn').on('click', () => { clearCheckpoint(); startScanner(); });
+  $('#reportForm').on('submit', submitReport);
+  $('#btnAdminTop,#mobileAdminNav').on('click', showAdmin);
+  $('#mobileGuardNav,#backToGuardBtn').on('click', showGuard);
+  $('#adminLoginForm').on('submit', adminLogin);
+  $('#logoutBtn').on('click', adminLogout);
+  $('#refreshAdminBtn').on('click', loadAdminData);
+  $('.admin-tab').on('click', function(){ openAdminTab($(this).data('tab')); });
+  $('#reportSearch,#reportSituation').on('input change', renderReports);
+  $('#addGuardBtn').on('click', () => editGuard(null));
+  $('#addCheckpointBtn').on('click', () => editCheckpoint(null));
+  $('#guardModalForm').on('submit', saveGuardSubmit);
+  $('#checkpointModalForm').on('submit', saveCheckpointSubmit);
+  $('#printAllQrBtn').on('click', printAllQr);
+}
+
+async function api(action, payload = {}, showLoading = false) {
+  const url = (typeof API_URL !== 'undefined' && API_URL) ? API_URL : (window.API_URL || '');
+  if (!url || url.includes('PASTE_YOUR')) {
+    throw new Error('กรุณาใส่ Apps Script Web App URL ในไฟล์ config.js ก่อน');
+  }
+  if (showLoading) $.LoadingOverlay('show', { image: '', fontawesome: 'fa fa-spinner fa-spin', text: 'กำลังประมวลผล...' });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...payload })
+    });
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.error || 'API error');
+    return result.data;
+  } finally {
+    if (showLoading) $.LoadingOverlay('hide');
+  }
+}
+
+async function loadBootstrap() {
+  try {
+    const data = await api('bootstrap');
+    guards = data.guards || [];
+    $('#appTitle').text(data.appName || 'ระบบตรวจรักษาความปลอดภัย');
+    renderGuardSelect();
+  } catch (e) { apiError(e); }
+}
+
+function renderGuardSelect() {
+  const $s = $('#guardSelect').empty().append('<option value="">-- เลือกชื่อ รปภ. --</option>');
+  guards.forEach(g => $s.append(`<option value="${escapeHtml(g.GuardID)}">${escapeHtml(g.Name)}</option>`));
+  if (!guards.length) $s.append('<option value="" disabled>ยังไม่มีรายชื่อ รปภ. — ให้ผู้ดูแลเพิ่มก่อน</option>');
+}
+
+// ======================= GPS & ANTI-FRAUD ENGINE =======================
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function getStoredCheckpointGps(checkpointId) {
+  try {
+    const map = JSON.parse(localStorage.getItem(GPS_LOCAL_KEY) || '{}');
+    return map[checkpointId] || null;
+  } catch (_) { return null; }
+}
+
+function setStoredCheckpointGps(checkpointId, lat, lng, radius = 50) {
+  try {
+    const map = JSON.parse(localStorage.getItem(GPS_LOCAL_KEY) || '{}');
+    map[checkpointId] = { lat: Number(lat), lng: Number(lng), radius: Number(radius) || 50 };
+    localStorage.setItem(GPS_LOCAL_KEY, JSON.stringify(map));
+  } catch (_) {}
+}
+
+function fetchCurrentPosition(highAccuracy = true) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      updateGpsUI('error', 'อุปกรณ์ไม่รองรับ GPS');
+      return reject(new Error('อุปกรณ์นี้ไม่รองรับระบบระบุตำแหน่ง GPS'));
+    }
+    updateGpsUI('searching');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        currentGps = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp
+        };
+        updateGpsUI('ready', currentGps);
+        resolve(currentGps);
+      },
+      err => {
+        updateGpsUI('error', err);
+        reject(err);
+      },
+      { enableHighAccuracy: highAccuracy, timeout: 15000, maximumAge: 15000 }
+    );
+  });
+}
+
+function updateGpsUI(state, data) {
+  const $text = $('#gpsStatusText');
+  const $wrap = $('#gpsIconWrap');
+  if (state === 'searching') {
+    $wrap.attr('class', 'w-8 h-8 rounded-xl bg-amber-50 text-amber-600 grid place-items-center text-sm shrink-0');
+    $wrap.html('<i class="fa-solid fa-satellite fa-spin"></i>');
+    $text.html('<span class="text-amber-600">กำลังตรวจจับสัญญาณดาวเทียม GPS...</span>');
+  } else if (state === 'ready') {
+    const acc = Math.round(data.accuracy || 0);
+    $wrap.attr('class', 'w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center text-sm shrink-0');
+    $wrap.html('<i class="fa-solid fa-location-crosshairs"></i>');
+    $text.html(`<span class="text-emerald-700">GPS พร้อมใช้งาน</span> <span class="text-gray-400 font-normal text-[11px]">(ความแม่นยำ ±${acc} ม.)</span>`);
+  } else if (state === 'error') {
+    $wrap.attr('class', 'w-8 h-8 rounded-xl bg-red-50 text-red-600 grid place-items-center text-sm shrink-0');
+    $wrap.html('<i class="fa-solid fa-triangle-exclamation"></i>');
+    $text.html('<span class="text-red-600">ไม่สามารถเข้าถึง GPS (กรุณาเปิด Location Service)</span>');
+  }
+}
+
+function initGpsWatcher() {
+  if (!navigator.geolocation) return updateGpsUI('error');
+  fetchCurrentPosition(false).catch(() => {});
+  navigator.geolocation.watchPosition(
+    pos => {
+      currentGps = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: pos.timestamp
+      };
+      updateGpsUI('ready', currentGps);
+    },
+    err => {
+      if (!currentGps) updateGpsUI('error', err);
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 20000 }
+  );
+}
+
+async function fillModalGps() {
+  const $btn = $('#getCurrentLocationForModalBtn');
+  const originalHtml = $btn.html();
+  $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังดึงพิกัด...');
+  try {
+    const pos = await fetchCurrentPosition(true);
+    $('#checkpointModalLat').val(pos.latitude.toFixed(6));
+    $('#checkpointModalLng').val(pos.longitude.toFixed(6));
+    $('#modalMapLink').attr('href', `https://www.google.com/maps?q=${pos.latitude},${pos.longitude}`).removeClass('hidden');
+    showToast(`ดึงพิกัดสำเร็จ (ความแม่นยำ ±${Math.round(pos.accuracy || 0)} ม.)`);
+  } catch (err) {
+    showTailwindAlert({
+      icon: 'error',
+      title: 'ไม่สามารถดึงพิกัด GPS ได้',
+      text: err && err.message ? err.message : 'กรุณาอนุญาต Location Service ในเบราว์เซอร์'
+    });
+  } finally {
+    $btn.prop('disabled', false).html(originalHtml);
+  }
+}
+
+window.calibrateCheckpointGps = async function(checkpointId, lat, lng) {
+  setStoredCheckpointGps(checkpointId, lat, lng, 50);
+  try {
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    if (token && currentCheckpoint) {
+      await api('saveCheckpoint', {
+        sessionToken: token,
+        checkpoint: {
+          CheckpointID: checkpointId,
+          CheckpointName: currentCheckpoint.CheckpointName,
+          PostID: currentCheckpoint.PostID,
+          Zone: currentCheckpoint.Zone,
+          Active: true,
+          Latitude: lat,
+          Longitude: lng,
+          Radius: 50
+        }
+      }, true);
+    }
+    showToast('บันทึกพิกัดจุดตรวจสำเร็จ! ระบบจะเริ่มบังคับตรวจระยะ 50 เมตร');
+    await selectCheckpoint(currentCheckpoint.QRToken);
+  } catch (e) {
+    showToast('บันทึกพิกัดในเครื่องเรียบร้อยแล้ว');
+    await selectCheckpoint(currentCheckpoint.QRToken);
+  }
+};
+// =======================================================================
+
+async function startScanner() {
+  if (isScannerStarting) return;
+  isScannerStarting = true;
+
+  $('#scannerCard').removeClass('hidden');
+  $('#scannerStatus').html('<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังขอสิทธิ์และเปิดกล้อง...');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    isScannerStarting = false;
+    $('#scannerStatus').text('อุปกรณ์หรือเบราว์เซอร์ไม่รองรับ Camera API');
+    showTailwindAlert({
+      icon: 'warning',
+      title: 'ไม่สามารถเปิดกล้องได้',
+      text: 'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องผ่านเว็บ กรุณาเปิดเว็บผ่าน HTTPS บน Safari หรือ Chrome หรือใช้ปุ่ม "เลือกรูป/ถ่ายภาพ QR" ด้านล่างแทน'
+    });
+    return;
+  }
+
+  try {
+    if (html5QrCode && (html5QrCode.isScanning || (window.Html5QrcodeScannerState && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING))) {
+      await html5QrCode.stop();
+    }
+  } catch (_) {}
+
+  $('#scannerCard').removeClass('hidden');
+
+  try {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("scannerContainer");
+    }
+
+    const qrConfig = {
+      fps: 15,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const size = Math.floor(minEdge * 0.7);
+        return {
+          width: Math.max(180, Math.min(size, 260)),
+          height: Math.max(180, Math.min(size, 260))
+        };
+      }
+    };
+
+    const onScanSuccess = async (decodedText) => {
+      $('#scannerStatus').html('<i class="fa-solid fa-circle-check text-green-500 mr-1"></i> พบ QR แล้ว กำลังตรวจสอบ...');
+      await stopScanner();
+      const token = parseQrToken(decodedText);
+      if (!token) {
+        return showTailwindAlert({ icon: 'error', title: 'QR ไม่ถูกต้อง', text: 'QR นี้ไม่มี token สำหรับจุดตรวจของระบบ' });
+      }
+      await selectCheckpoint(token);
+    };
+
+    try {
+      await html5QrCode.start(
+        { facingMode: currentFacingMode },
+        qrConfig,
+        onScanSuccess,
+        () => {}
+      );
+    } catch (startErr) {
+      console.warn('FacingMode start failed, trying camera list fallback...', startErr);
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras && cameras.length) {
+        const cam = (currentFacingMode === 'environment')
+          ? (cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0])
+          : (cameras.find(c => /front|user|selfie/i.test(c.label)) || cameras[0]);
+        await html5QrCode.start(cam.id, qrConfig, onScanSuccess, () => {});
+      } else {
+        throw startErr;
+      }
+    }
+
+    $('#scannerStatus').text('นำกล้องไปส่อง QR จุดตรวจ');
+
+  } catch (e) {
+    console.error('Camera error:', e);
+    await stopScanner();
+
+    let errMsg = 'กรุณาอนุญาต Camera ในการตั้งค่าเบราว์เซอร์ และเปิดเว็บผ่าน HTTPS';
+    const errStr = String(e && (e.message || e)).toLowerCase();
+    if (errStr.includes('notallowed') || errStr.includes('permission') || errStr.includes('denied')) {
+      errMsg = 'คุณปฏิเสธสิทธิ์การเข้าถึงกล้อง กรุณากดไอคอนแม่กุญแจ 🔒 หรือการตั้งค่าเว็บไซต์ เพื่ออนุญาตให้ใช้งานกล้อง';
+    } else if (errStr.includes('notfound') || errStr.includes('devicesnotfound') || errStr.includes('no camera')) {
+      errMsg = 'ไม่พบอุปกรณ์กล้องบนเครื่องนี้';
+    } else if (errStr.includes('notreadable') || errStr.includes('trackstart') || errStr.includes('in use')) {
+      errMsg = 'กล้องกำลังถูกใช้งานโดยแอปพลิเคชันอื่น กรุณาปิดแอปอื่นแล้วลองใหม่อีกครั้ง';
+    }
+
+    if (/Line\//i.test(navigator.userAgent)) {
+      errMsg += '<br><br><span class="text-amber-600 font-medium">⚠️ คำแนะนำ: กำลังเปิดผ่าน LINE กรุณากดปุ่ม 3 จุด (...) ที่มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์อื่น" (Open in Safari / Chrome)</span>';
+    }
+
+    showTailwindAlert({
+      icon: 'error',
+      title: 'เปิดกล้องไม่ได้',
+      html: `<div class="text-left text-sm leading-relaxed">${errMsg}</div>`
+    });
+  } finally {
+    isScannerStarting = false;
+  }
+}
+
+async function stopScanner() {
+  if (html5QrCode) {
+    try {
+      if (html5QrCode.isScanning || (window.Html5QrcodeScannerState && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING)) {
+        await html5QrCode.stop();
+      }
+    } catch (e) {
+      console.warn('stopScanner warning:', e);
+    }
+  }
+  $('#scannerCard').addClass('hidden');
+}
+
+async function switchCamera() {
+  $('#scannerStatus').html('<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังสลับกล้อง...');
+  await stopScanner();
+  currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+  await startScanner();
+}
+
+async function scanFromImageFile(file) {
+  if (!file) return;
+  try {
+    $.LoadingOverlay('show', { image: '', fontawesome: 'fa fa-spinner fa-spin', text: 'กำลังอ่าน QR Code จากรูปภาพ...' });
+    await stopScanner();
+
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("scannerContainer");
+    }
+
+    const decodedText = await html5QrCode.scanFile(file, false);
+    $.LoadingOverlay('hide');
+
+    if (decodedText) {
+      const token = parseQrToken(decodedText);
+      if (!token) {
+        return showTailwindAlert({ icon: 'error', title: 'ไม่พบ Token จุดตรวจ', text: 'QR Code ในรูปภาพนี้ไม่มีข้อมูลสำหรับจุดตรวจ' });
+      }
+      showToast('สแกน QR Code จากรูปภาพสำเร็จ');
+      await selectCheckpoint(token);
+    } else {
+      throw new Error('No QR detected');
+    }
+  } catch (err) {
+    $.LoadingOverlay('hide');
+    console.warn('Image scan error:', err);
+    showTailwindAlert({
+      icon: 'warning',
+      title: 'ไม่พบ QR Code ในภาพ',
+      text: 'ไม่สามารถตรวจจับ QR Code ได้ กรุณาถ่ายภาพให้ชัดเจนและเห็น QR ชัดๆ อยู่ตรงกลางภาพ'
+    });
+  }
+}
+
+function parseQrToken(raw) {
+  raw = String(raw || '').trim();
+  try {
+    const u = new URL(raw);
+    return u.searchParams.get('token') || u.searchParams.get('t') || '';
+  } catch (_) { return raw.length >= 8 ? raw : ''; }
+}
+
+async function selectCheckpoint(token) {
+  try {
+    const cp = await api('getCheckpoint', { token }, true);
+    currentCheckpoint = cp;
+    verifiedScanGps = null;
+
+    $('#checkpointName').text(cp.CheckpointName);
+    $('#checkpointMeta').text(`${cp.PostID} • ${cp.Zone}`);
+    $('#checkpointGpsResult').empty().addClass('hidden');
+
+    // Anti-fraud GPS Verification
+    let targetLat = (cp.Latitude != null && !isNaN(Number(cp.Latitude))) ? Number(cp.Latitude) : null;
+    let targetLng = (cp.Longitude != null && !isNaN(Number(cp.Longitude))) ? Number(cp.Longitude) : null;
+    let maxRadius = (cp.Radius != null && !isNaN(Number(cp.Radius))) ? Number(cp.Radius) : 50;
+
+    // Check localStorage fallback or URL param fallback
+    if (targetLat == null || targetLng == null) {
+      const stored = getStoredCheckpointGps(cp.CheckpointID);
+      if (stored) {
+        targetLat = stored.lat;
+        targetLng = stored.lng;
+        if (stored.radius) maxRadius = stored.radius;
+      }
+    }
+    if (targetLat == null || targetLng == null) {
+      const url = new URL(location.href);
+      if (url.searchParams.get('lat') && url.searchParams.get('lng')) {
+        targetLat = parseFloat(url.searchParams.get('lat'));
+        targetLng = parseFloat(url.searchParams.get('lng'));
+      }
+    }
+
+    // Require current live GPS position to prevent fraud
+    $.LoadingOverlay('show', { image: '', fontawesome: 'fa fa-satellite fa-spin', text: 'กำลังตรวจสอบตำแหน่ง GPS เพื่อป้องกันการทุจริต...' });
+    let guardPos;
+    try {
+      guardPos = await fetchCurrentPosition(true);
+    } catch (gpsErr) {
+      $.LoadingOverlay('hide');
+      clearCheckpoint();
+      showTailwindAlert({
+        icon: 'error',
+        title: 'จำเป็นต้องเปิด GPS',
+        text: 'ระบบความปลอดภัยกำหนดให้ รปภ. ต้องเปิด Location Service บนโทรศัพท์ เพื่อยืนยันว่าท่านอยู่ที่จุดตรวจจริง กรุณาเปิด GPS แล้วลองใหม่อีกครั้ง'
+      });
+      return;
+    }
+    $.LoadingOverlay('hide');
+
+    if (targetLat != null && targetLng != null) {
+      const dist = getHaversineDistance(guardPos.latitude, guardPos.longitude, targetLat, targetLng);
+      const roundedDist = Math.round(dist);
+
+      if (dist > maxRadius) {
+        // FRAUD DETECTED: GUARD IS FURTHER THAN 50 METERS
+        clearCheckpoint();
+        showTailwindAlert({
+          icon: 'error',
+          title: 'อยู่นอกพื้นที่จุดตรวจ!',
+          html: `
+            <div class="text-left space-y-3 pt-2">
+              <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl space-y-2 text-xs">
+                <div class="flex justify-between"><span class="text-gray-500">จุดตรวจ:</span> <span class="font-bold text-gray-900">${escapeHtml(cp.CheckpointName)}</span></div>
+                <div class="flex justify-between items-center"><span class="text-gray-500">ระยะห่างปัจจุบัน:</span> <span class="font-bold text-rose-600 text-sm bg-rose-100 px-2 py-0.5 rounded-lg">${roundedDist} เมตร</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">ระยะที่อนุญาต:</span> <span class="font-bold text-emerald-700">ไม่เกิน ${maxRadius} เมตร</span></div>
+                <div class="flex justify-between text-gray-400 text-[11px] pt-1 border-t border-rose-100">
+                  <span>ความแม่นยำ GPS:</span> <span>±${Math.round(guardPos.accuracy || 0)} ม.</span>
+                </div>
+              </div>
+              <p class="text-xs text-rose-700 font-medium leading-relaxed">
+                🚫 <b>ระบบป้องกันการทุจริต (Anti-Fraud GPS):</b> ท่านอยู่ห่างจากจุดตรวจจริงเกิน ${maxRadius} เมตร ไม่อนุญาตให้สแกนหรือส่งรายงาน กรุณาเดินไปยังจุดตรวจจริงในระยะ 50 เมตร แล้วสแกนใหม่อีกครั้ง
+              </p>
+            </div>
+          `
+        });
+        return;
+      }
+
+      // PASS: WITHIN 50 METERS
+      verifiedScanGps = {
+        latitude: guardPos.latitude,
+        longitude: guardPos.longitude,
+        distanceMeters: roundedDist,
+        accuracy: guardPos.accuracy
+      };
+
+      $('#checkpointGpsResult').html(`
+        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-lg"></i>
+            <div>
+              <div class="font-bold">ยืนยันพิกัดสำเร็จ (อยู่ในระยะ ${maxRadius} ม.)</div>
+              <div class="text-[11px] text-emerald-700">ห่างจากจุดตรวจ ${dist.toFixed(1)} เมตร • ความแม่นยำ GPS ±${Math.round(guardPos.accuracy || 0)} ม.</div>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 bg-emerald-600 text-white font-bold rounded-lg text-[10px] tracking-wider uppercase shadow-sm">
+            50M PASS
+          </span>
+        </div>
+      `).removeClass('hidden');
+
+      showToast(`ยืนยันพิกัดสำเร็จ (ห่าง ${dist.toFixed(1)} ม.)`);
+    } else {
+      // Checkpoint has no GPS recorded yet
+      const isAdmin = !!sessionStorage.getItem(ADMIN_TOKEN_KEY);
+      if (isAdmin) {
+        $('#checkpointGpsResult').html(`
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="font-bold text-amber-900"><i class="fa-solid fa-triangle-exclamation mr-1"></i> จุดนี้ยังไม่ได้ตั้งพิกัด GPS อ้างอิง</div>
+              <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold">Admin</span>
+            </div>
+            <p class="text-[11px] text-amber-700">คุณมีสิทธิ์ผู้ดูแลระบบ สามารถกดปุ่มด้านล่างเพื่อบันทึกพิกัดที่คุณยืนอยู่นี้ (${guardPos.latitude.toFixed(6)}, ${guardPos.longitude.toFixed(6)}) เป็นพิกัดอ้างอิง 50 เมตรของจุดนี้ได้ทันที</p>
+            <button type="button" onclick="calibrateCheckpointGps('${cp.CheckpointID}', ${guardPos.latitude}, ${guardPos.longitude})" class="btn w-full py-1.5 bg-brand text-white text-xs font-semibold rounded-lg shadow-sm">
+              <i class="fa-solid fa-map-pin mr-1"></i> บันทึกพิกัดนี้เป็นจุดตรวจ (จำกัด 50 เมตร)
+            </button>
+          </div>
+        `).removeClass('hidden');
+      } else {
+        $('#checkpointGpsResult').html(`
+          <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-info text-blue-600"></i>
+              <span>บันทึกพิกัดตรวจ: ${guardPos.latitude.toFixed(5)}, ${guardPos.longitude.toFixed(5)}</span>
+            </div>
+            <span class="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded font-medium">บันทึกพิกัดแล้ว</span>
+          </div>
+        `).removeClass('hidden');
+      }
+
+      verifiedScanGps = {
+        latitude: guardPos.latitude,
+        longitude: guardPos.longitude,
+        distanceMeters: 0,
+        accuracy: guardPos.accuracy
+      };
+    }
+
+    $('#checkpointCard,#reportForm').removeClass('hidden');
+    $('html,body').animate({ scrollTop: $('#checkpointCard').offset().top - 90 }, 250);
+    const url = new URL(location.href); url.searchParams.set('token', token); history.replaceState({}, '', url);
+
+  } catch (e) { apiError(e); }
+}
+
+function clearCheckpoint() {
+  currentCheckpoint = null;
+  verifiedScanGps = null;
+  $('#checkpointCard,#reportForm').addClass('hidden');
+  $('#checkpointGpsResult').empty().addClass('hidden');
+  const url = new URL(location.href); url.searchParams.delete('token'); history.replaceState({}, '', url.pathname + url.search);
+}
+
+async function submitReport(e) {
+  e.preventDefault();
+  if (!currentCheckpoint) return showTailwindAlert({ icon: 'warning', title: 'ยังไม่ได้สแกน QR', text: 'กรุณาสแกน QR จุดตรวจก่อน' });
+  const guardId = $('#guardSelect').val();
+  if (!guardId) return showTailwindAlert({ icon: 'warning', title: 'กรุณาเลือกชื่อ รปภ.' });
+
+  try {
+    const payload = {
+      checkpointToken: currentCheckpoint.QRToken,
+      guardId,
+      situation: $('input[name="situation"]:checked').val(),
+      escapeTrace: $('input[name="escapeTrace"]:checked').val(),
+      lighting: $('input[name="lighting"]:checked').val(),
+      suspiciousPerson: $('input[name="suspiciousPerson"]:checked').val(),
+      abnormalItem: $('input[name="abnormalItem"]:checked').val(),
+      details: $('#details').val(),
+      actionTaken: $('#actionTaken').val(),
+      latitude: verifiedScanGps ? verifiedScanGps.latitude : (currentGps ? currentGps.latitude : null),
+      longitude: verifiedScanGps ? verifiedScanGps.longitude : (currentGps ? currentGps.longitude : null),
+      distanceMeters: verifiedScanGps ? verifiedScanGps.distanceMeters : null
+    };
+
+    const result = await api('submitReport', payload, true);
+
+    confetti({ particleCount: 120, spread: 80, origin: { y: .65 } });
+    await showTailwindAlert({
+      icon: 'success',
+      title: 'ส่งรายงานสำเร็จ',
+      html: `<b>${escapeHtml(result.checkpoint)}</b><br><small class="text-gray-500">${escapeHtml(result.timestamp)}<br>${escapeHtml(result.reportId)}</small>${result.distanceMeters != null ? `<br><span class="inline-block mt-2 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-md"><i class="fa-solid fa-location-dot mr-1"></i> ระยะห่าง: ${result.distanceMeters} เมตร (ผ่านเกณฑ์)</span>` : ''}`
+    });
+    resetReportForm();
+    clearCheckpoint();
+  } catch (e2) { apiError(e2); }
+}
+
+function resetReportForm() {
+  $('#details,#actionTaken').val('');
+  $('input[name="situation"][value="ปกติ"]').prop('checked', true);
+  $('input[name="escapeTrace"][value="ไม่พบ"]').prop('checked', true);
+  $('input[name="lighting"][value="ปกติ"]').prop('checked', true);
+  $('input[name="suspiciousPerson"][value="ไม่พบ"]').prop('checked', true);
+  $('input[name="abnormalItem"][value="ไม่พบ"]').prop('checked', true);
+}
+
+function updateClock() { $('#liveTime').text(new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'medium'}).format(new Date())); }
+
+function showGuard() {
+  stopScanner();
+  $('#adminLoginView,#adminView').addClass('hidden'); $('#guardView').removeClass('hidden');
+  $('#mobileGuardNav').addClass('nav-active').removeClass('text-gray-500'); $('#mobileAdminNav').removeClass('nav-active').addClass('text-gray-500');
+}
+
+async function showAdmin() {
+  stopScanner(); $('#guardView').addClass('hidden');
+  $('#mobileAdminNav').addClass('nav-active').removeClass('text-gray-500'); $('#mobileGuardNav').removeClass('nav-active').addClass('text-gray-500');
+  if (sessionStorage.getItem(ADMIN_TOKEN_KEY)) {
+    $('#adminLoginView').addClass('hidden'); $('#adminView').removeClass('hidden'); await loadAdminData();
+  } else { $('#adminView').addClass('hidden'); $('#adminLoginView').removeClass('hidden'); }
+}
+
+async function adminLogin(e) {
+  e.preventDefault();
+  try {
+    const data = await api('adminLogin', { password: $('#adminPassword').val() }, true);
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, data.sessionToken);
+    $('#adminPassword').val(''); $('#adminLoginView').addClass('hidden'); $('#adminView').removeClass('hidden');
+    await loadAdminData();
+  } catch (e2) { apiError(e2); }
+}
+
+async function adminLogout() {
+  const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  try { if (token) await api('adminLogout', { sessionToken: token }); } catch (_) {}
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY); adminData = null; showAdmin();
+}
+
+async function loadAdminData() {
+  try {
+    adminData = await api('adminData', { sessionToken: sessionStorage.getItem(ADMIN_TOKEN_KEY) }, true);
+    renderAdmin();
+  } catch (e) {
+    if (String(e.message).includes('ADMIN_SESSION_EXPIRED')) { sessionStorage.removeItem(ADMIN_TOKEN_KEY); return showAdmin(); }
+    apiError(e);
+  }
+}
+
+function renderAdmin() {
+  $('#statToday').text(adminData.stats.today); $('#statCheckpoints').text(adminData.stats.activeCheckpoints); $('#statWatch').text(adminData.stats.watch); $('#statUrgent').text(adminData.stats.urgent);
+  renderCharts(); renderReports(); renderGuards(); renderCheckpoints(); renderQrGrid();
+}
+
+function renderCharts() {
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new ApexCharts(document.querySelector('#dailyChart'), {
+    chart:{type:'area',height:280,toolbar:{show:false}}, series:[{name:'จำนวนการตรวจ',data:adminData.charts.daily.values}], xaxis:{categories:adminData.charts.daily.labels}, dataLabels:{enabled:false}, stroke:{curve:'smooth'}, colors:['#087B40'], fill:{opacity:.15}
+  }); dailyChart.render();
+
+  if (situationChart) situationChart.destroy();
+  const s = adminData.charts.situation;
+  situationChart = new Chart(document.getElementById('situationChart'), {type:'doughnut',data:{labels:['ปกติ','เฝ้าระวัง','เร่งด่วน'],datasets:[{data:[s['ปกติ'],s['เฝ้าระวัง'],s['เร่งด่วน']],backgroundColor:['#16a34a','#d97706','#dc2626']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+
+function openAdminTab(tab) {
+  $('.admin-tab').removeClass('nav-active'); $(`.admin-tab[data-tab="${tab}"]`).addClass('nav-active');
+  $('.admin-panel').addClass('hidden'); $('#tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).removeClass('hidden');
+}
+
+function renderReports() {
+  if (!adminData) return;
+  const q = ($('#reportSearch').val() || '').toLowerCase(); const sit = $('#reportSituation').val() || '';
+  const rows = adminData.reports.filter(r => (!sit || r.Situation === sit) && (!q || `${r.ReportID} ${r.CheckpointName} ${r.GuardName} ${r.Details} ${r.ActionTaken}`.toLowerCase().includes(q)));
+  $('#reportsBody').html(rows.map(r => {
+    let gpsBadge = '';
+    if (r.DistanceMeters != null) {
+      const isOk = r.DistanceMeters <= 50;
+      gpsBadge = `<div class="mt-0.5 text-[11px] ${isOk ? 'text-emerald-700' : 'text-rose-600 font-semibold'}"><i class="fa-solid fa-location-dot"></i> ห่าง ${r.DistanceMeters} ม.</div>`;
+    }
+    return `<tr class="border-t">
+      <td class="p-3 whitespace-nowrap text-xs">${escapeHtml(r.Timestamp)}</td>
+      <td class="p-3 font-medium text-xs">${escapeHtml(r.CheckpointName)}${gpsBadge}</td>
+      <td class="p-3 text-xs">${escapeHtml(r.GuardName)}</td>
+      <td class="p-3">${statusBadge(r.Situation)}</td>
+      <td class="p-3 max-w-sm"><div class="truncate text-xs text-gray-600">${escapeHtml(r.Details || r.ActionTaken || '-')}</div></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="p-8 text-center text-gray-400">ไม่พบข้อมูล</td></tr>');
+}
+
+function statusBadge(s) {
+  const cls = s === 'เร่งด่วน' ? 'bg-red-100 text-red-700' : s === 'เฝ้าระวัง' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+  return `<span class="px-2 py-1 rounded-lg text-xs font-medium ${cls}">${escapeHtml(s)}</span>`;
+}
+
+function renderGuards() {
+  $('#guardsList').html(adminData.guards.map(g => `<div class="border rounded-xl p-4 flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-soft text-brand grid place-items-center"><i class="fa-solid fa-user"></i></div><div class="flex-1"><div class="font-medium">${escapeHtml(g.Name)}</div><div class="text-xs ${g.Active?'text-green-600':'text-gray-400'}">${g.Active?'Active':'Disabled'}</div></div><button class="btn px-3 py-2 bg-gray-100 text-sm" onclick="editGuard('${g.GuardID}')"><i class="fa-solid fa-pen"></i></button></div>`).join('') || '<div class="text-gray-400">ยังไม่มีรายชื่อ</div>');
+}
+
+function openTailwindModal(id) {
+  const $m = $('#' + id);
+  $m.removeClass('hidden');
+  $('body').addClass('overflow-hidden');
+  setTimeout(() => {
+    $m.find('.modal-panel').removeClass('scale-95 opacity-0').addClass('scale-100 opacity-100');
+  }, 10);
+}
+
+function closeTailwindModal(id) {
+  const $m = $('#' + id);
+  $m.find('.modal-panel').removeClass('scale-100 opacity-100').addClass('scale-95 opacity-0');
+  setTimeout(() => {
+    $m.addClass('hidden');
+    if ($('.fixed.inset-0:not(.hidden)').length === 0) {
+      $('body').removeClass('overflow-hidden');
+    }
+  }, 180);
+}
+
+function showTailwindAlert({ icon = 'info', title = '', text = '', html = '', buttonText = 'ตกลง' }) {
+  return new Promise((resolve) => {
+    const $icon = $('#alertModalIcon').empty();
+    if (icon === 'success') {
+      $icon.attr('class', 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 bg-emerald-50 text-emerald-600')
+           .html('<i class="fa-solid fa-circle-check"></i>');
+    } else if (icon === 'error') {
+      $icon.attr('class', 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 bg-rose-50 text-rose-600')
+           .html('<i class="fa-solid fa-circle-exclamation"></i>');
+    } else if (icon === 'warning') {
+      $icon.attr('class', 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 bg-amber-50 text-amber-500')
+           .html('<i class="fa-solid fa-triangle-exclamation"></i>');
+    } else {
+      $icon.attr('class', 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4 bg-blue-50 text-blue-500')
+           .html('<i class="fa-solid fa-circle-info"></i>');
+    }
+
+    $('#alertModalTitle').text(title);
+    if (html) {
+      $('#alertModalBody').html(html);
+    } else {
+      $('#alertModalBody').text(text);
+    }
+
+    $('#alertModalBtn').text(buttonText).off('click').on('click', function() {
+      closeTailwindModal('alertModal');
+      resolve();
+    });
+
+    openTailwindModal('alertModal');
+  });
+}
+
+function showTailwindConfirm({ title = 'ยืนยันการทำรายการ', text = '', confirmText = 'ยืนยัน', cancelText = 'ยกเลิก', isDanger = false }) {
+  return new Promise((resolve) => {
+    $('#confirmModalTitle').text(title);
+    $('#confirmModalBody').text(text);
+    
+    const $confBtn = $('#confirmModalConfirmBtn').text(confirmText);
+    if (isDanger) {
+      $confBtn.attr('class', 'btn py-2.5 bg-red-600 text-white hover:bg-red-700 text-sm font-semibold');
+    } else {
+      $confBtn.attr('class', 'btn py-2.5 bg-brand text-white hover:bg-brandDark text-sm font-semibold');
+    }
+
+    $('#confirmModalCancelBtn').text(cancelText).off('click').on('click', function() {
+      closeTailwindModal('confirmModal');
+      resolve(false);
+    });
+
+    $confBtn.off('click').on('click', function() {
+      closeTailwindModal('confirmModal');
+      resolve(true);
+    });
+
+    openTailwindModal('confirmModal');
+  });
+}
+
+function showToast(text, type = 'success') {
+  const iconCls = type === 'error' ? 'fa-solid fa-circle-xmark text-rose-400' : 'fa-solid fa-circle-check text-emerald-400';
+  const $toast = $(`
+    <div class="flex items-center gap-3 bg-gray-900/95 text-white backdrop-blur px-4 py-3 rounded-xl shadow-xl pointer-events-auto transition-all duration-300 transform translate-y-[-10px] opacity-0 text-sm">
+      <i class="${iconCls} text-base shrink-0"></i>
+      <span class="flex-1">${escapeHtml(text)}</span>
+    </div>
+  `);
+  $('#toastContainer').append($toast);
+  setTimeout(() => $toast.removeClass('translate-y-[-10px] opacity-0'), 10);
+  setTimeout(() => {
+    $toast.addClass('opacity-0 translate-y-[-10px]');
+    setTimeout(() => $toast.remove(), 300);
+  }, 2400);
+}
+
+// Global SweetAlert compatibility wrapper
+const Swal = {
+  fire: function(opts, text, icon) {
+    if (typeof opts === 'string') {
+      opts = { title: opts, text: text || '', icon: icon || 'info' };
+    }
+    if (opts.toast) {
+      showToast(opts.title || opts.text || '', opts.icon || 'success');
+      return Promise.resolve({ isConfirmed: true });
+    }
+    if (opts.showCancelButton) {
+      return showTailwindConfirm({
+        title: opts.title || 'ยืนยันการทำรายการ',
+        text: opts.text || '',
+        confirmText: opts.confirmButtonText || 'ตกลง',
+        cancelText: opts.cancelButtonText || 'ยกเลิก',
+        isDanger: opts.icon === 'warning' || opts.icon === 'error'
+      }).then(isConfirmed => ({ isConfirmed, value: isConfirmed }));
+    }
+    return showTailwindAlert({
+      icon: opts.icon || 'info',
+      title: opts.title || '',
+      text: opts.text || '',
+      html: opts.html || '',
+      buttonText: opts.confirmButtonText || 'ตกลง'
+    }).then(() => ({ isConfirmed: true }));
+  }
+};
+
+$(document).on('click', '.fixed.inset-0', function(e) {
+  if (e.target === this) {
+    const id = $(this).attr('id');
+    if (id && !['confirmModal'].includes(id)) {
+      closeTailwindModal(id);
+    }
+  }
+});
+
+$(document).on('keydown', function(e) {
+  if (e.key === 'Escape') {
+    $('.fixed.inset-0:not(.hidden)').each(function() {
+      const id = $(this).attr('id');
+      if (id && !['confirmModal'].includes(id)) closeTailwindModal(id);
+    });
+  }
+});
+
+function editGuard(id) {
+  const g = id ? adminData.guards.find(x => x.GuardID === id) : { Name: '', Active: true };
+  if (!g) return;
+  $('#guardModalId').val(id || '');
+  $('#guardModalTitle').text(id ? 'แก้ไขข้อมูล รปภ.' : 'เพิ่มข้อมูล รปภ.');
+  $('#guardModalName').val(g.Name || '');
+  $('#guardModalActive').prop('checked', g.Active !== false);
+  openTailwindModal('guardModal');
+  setTimeout(() => $('#guardModalName').focus(), 150);
+}
+
+async function saveGuardSubmit(e) {
+  e.preventDefault();
+  const id = $('#guardModalId').val();
+  const name = $('#guardModalName').val().trim();
+  const active = $('#guardModalActive').is(':checked');
+  if (!name) return showTailwindAlert({ icon: 'warning', title: 'กรุณากรอกชื่อ-นามสกุล' });
+
+  closeTailwindModal('guardModal');
+  try {
+    await api('saveGuard', {
+      sessionToken: sessionStorage.getItem(ADMIN_TOKEN_KEY),
+      guard: { GuardID: id || '', Name: name, Active: active }
+    }, true);
+    await loadAdminData();
+    await loadBootstrap();
+    showToast('บันทึกข้อมูล รปภ. เรียบร้อยแล้ว');
+  } catch (err) {
+    apiError(err);
+  }
+}
+
+function renderCheckpoints() {
+  $('#checkpointList').html(adminData.checkpoints.map(c => {
+    const stored = getStoredCheckpointGps(c.CheckpointID);
+    const lat = (c.Latitude != null && c.Latitude !== '') ? c.Latitude : (stored ? stored.lat : null);
+    const lng = (c.Longitude != null && c.Longitude !== '') ? c.Longitude : (stored ? stored.lng : null);
+    const radius = c.Radius || (stored ? stored.radius : 50);
+    const hasGps = lat != null && lng != null;
+
+    const gpsBadge = hasGps
+      ? `<span class="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"><i class="fa-solid fa-location-dot"></i> ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)} (${radius}ม.)</span>`
+      : `<span class="inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"><i class="fa-solid fa-triangle-exclamation"></i> ยังไม่ระบุ GPS</span>`;
+
+    return `<div class="border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-soft text-brand grid place-items-center shrink-0">
+          <i class="fa-solid fa-location-dot"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-gray-800">${escapeHtml(c.CheckpointName)}</div>
+          <div class="text-xs text-gray-500 mt-0.5">${escapeHtml(c.PostID)} • ${escapeHtml(c.Zone)}</div>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            ${gpsBadge}
+            <span class="text-xs ${c.Active ? 'text-green-600 font-medium' : 'text-gray-400'}">${c.Active ? 'Active' : 'Disabled'}</span>
+          </div>
+        </div>
+        <button class="btn w-9 h-9 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm grid place-items-center" onclick="editCheckpoint('${c.CheckpointID}')" title="แก้ไข">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="text-gray-400 p-4">ยังไม่มีจุดตรวจ</div>');
+}
+
+function editCheckpoint(id) {
+  const c = id ? adminData.checkpoints.find(x => x.CheckpointID === id) : { CheckpointName: '', PostID: '', Zone: '', Active: true, Latitude: '', Longitude: '', Radius: 50 };
+  if (!c) return;
+  const stored = getStoredCheckpointGps(c.CheckpointID);
+  const lat = (c.Latitude != null && c.Latitude !== '') ? c.Latitude : (stored ? stored.lat : '');
+  const lng = (c.Longitude != null && c.Longitude !== '') ? c.Longitude : (stored ? stored.lng : '');
+  const radius = c.Radius || (stored ? stored.radius : 50);
+
+  $('#checkpointModalId').val(id || '');
+  $('#checkpointModalTitle').text(id ? 'แก้ไขจุดตรวจ' : 'เพิ่มจุดตรวจ');
+  $('#checkpointModalName').val(c.CheckpointName || '');
+  $('#checkpointModalPost').val(c.PostID || '');
+  $('#checkpointModalZone').val(c.Zone || '');
+  $('#checkpointModalLat').val(lat);
+  $('#checkpointModalLng').val(lng);
+  $('#checkpointModalRadius').val(radius || 50);
+  $('#checkpointModalActive').prop('checked', c.Active !== false);
+
+  if (lat && lng) {
+    $('#modalMapLink').attr('href', `https://www.google.com/maps?q=${lat},${lng}`).removeClass('hidden');
+  } else {
+    $('#modalMapLink').addClass('hidden');
+  }
+
+  openTailwindModal('checkpointModal');
+  setTimeout(() => $('#checkpointModalName').focus(), 150);
+}
+
+async function saveCheckpointSubmit(e) {
+  e.preventDefault();
+  const id = $('#checkpointModalId').val();
+  const name = $('#checkpointModalName').val().trim();
+  const post = $('#checkpointModalPost').val().trim();
+  const zone = $('#checkpointModalZone').val().trim();
+  const lat = $('#checkpointModalLat').val().trim();
+  const lng = $('#checkpointModalLng').val().trim();
+  const radius = parseInt($('#checkpointModalRadius').val(), 10) || 50;
+  const active = $('#checkpointModalActive').is(':checked');
+  if (!name || !post) {
+    return showTailwindAlert({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบถ้วน', text: 'ชื่อจุดตรวจ และ รหัสป้อม จำเป็นต้องระบุ' });
+  }
+
+  // Save to local storage cache immediately
+  if (id && lat && lng) {
+    setStoredCheckpointGps(id, lat, lng, radius);
+  }
+
+  closeTailwindModal('checkpointModal');
+  try {
+    await api('saveCheckpoint', {
+      sessionToken: sessionStorage.getItem(ADMIN_TOKEN_KEY),
+      checkpoint: {
+        CheckpointID: id || '',
+        CheckpointName: name,
+        PostID: post,
+        Zone: zone,
+        Active: active,
+        Latitude: lat ? Number(lat) : '',
+        Longitude: lng ? Number(lng) : '',
+        Radius: radius
+      }
+    }, true);
+    await loadAdminData();
+    showToast('บันทึกข้อมูลจุดตรวจและพิกัด GPS เรียบร้อยแล้ว');
+  } catch (err) {
+    apiError(err);
+  }
+}
+
+function qrUrl(c) { const base = location.href.split('?')[0].split('#')[0]; return `${base}?token=${encodeURIComponent(c.QRToken)}`; }
+
+function renderQrGrid() {
+  const $g = $('#qrGrid').empty();
+  adminData.checkpoints.forEach((c,i) => {
+    const id = `qr-${i}`;
+    $g.append(`<div class="border rounded-xl p-4 text-center"><div id="${id}" class="inline-block bg-white p-2"></div><div class="font-medium mt-2">${escapeHtml(c.CheckpointName)}</div><div class="text-xs text-gray-500">${escapeHtml(c.PostID)}</div><div class="flex gap-2 mt-3"><button class="btn flex-1 py-2 bg-gray-100 text-sm" onclick="copyQrUrl('${c.CheckpointID}')"><i class="fa-solid fa-link"></i> Link</button><button class="btn flex-1 py-2 bg-soft text-brand text-sm" onclick="regenQr('${c.CheckpointID}')"><i class="fa-solid fa-rotate"></i> Token</button></div></div>`);
+    setTimeout(()=>new QRCode(document.getElementById(id),{text:qrUrl(c),width:150,height:150,correctLevel:QRCode.CorrectLevel.M}),0);
+  });
+}
+
+function copyQrUrl(id) {
+  const c = adminData.checkpoints.find(x => x.CheckpointID === id);
+  if (!c) return;
+  navigator.clipboard.writeText(qrUrl(c));
+  showToast('คัดลอกลิงก์เรียบร้อยแล้ว');
+}
+
+async function regenQr(id) {
+  const ok = await showTailwindConfirm({
+    icon: 'warning',
+    title: 'สร้าง QR Token ใหม่?',
+    text: 'QR เดิมของจุดนี้จะใช้งานไม่ได้ทันที ต้องการสร้างใหม่หรือไม่',
+    confirmText: 'สร้างใหม่',
+    cancelText: 'ยกเลิก',
+    isDanger: true
+  });
+  if (!ok) return;
+  try {
+    await api('regenerateToken', { sessionToken: sessionStorage.getItem(ADMIN_TOKEN_KEY), checkpointId: id }, true);
+    await loadAdminData();
+    showToast('สร้าง QR Token ใหม่สำเร็จ');
+  } catch (e) {
+    apiError(e);
+  }
+}
+
+async function printAllQr() {
+  const items = [];
+  for (const c of adminData.checkpoints.filter(x => x.Active)) {
+    const temp = document.createElement('div');
+    document.body.appendChild(temp);
+    new QRCode(temp, { text: qrUrl(c), width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+    const canvas = temp.querySelector('canvas');
+    items.push({ name: c.CheckpointName, post: c.PostID, img: canvas.toDataURL('image/png') });
+    temp.remove();
+  }
+  const w = window.open('', '_blank');
+  if (!w) {
+    Swal.fire('แจ้งเตือน', 'กรุณาอนุญาต Pop-up บนเบราว์เซอร์เพื่อพิมพ์ QR Code', 'warning');
+    return;
+  }
+  w.document.title = 'พิมพ์ QR Code จุดตรวจ';
+
+  const style = w.document.createElement('style');
+  style.textContent = [
+    '* { box-sizing: border-box; }',
+    'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Prompt", sans-serif; padding: 24px; background: #fff; color: #111; margin: 0; }',
+    '.no-print { margin-bottom: 20px; display: flex; gap: 10px; }',
+    '.btn { padding: 10px 20px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }',
+    '.btn-print { background: #087B40; color: #fff; }',
+    '.btn-close { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }',
+    '.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }',
+    '.item { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; text-align: center; page-break-inside: avoid; break-inside: avoid; }',
+    '.item img { width: 220px; max-width: 100%; margin: 0 auto 12px; display: block; }',
+    '.name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }',
+    '.post { color: #64748b; font-size: 14px; }',
+    '@media print { .no-print { display: none !important; } .item { border-color: #ccc; } }'
+  ].join('\n');
+  w.document.head.appendChild(style);
+
+  const topBar = w.document.createElement('div');
+  topBar.className = 'no-print';
+
+  const printBtn = w.document.createElement('button');
+  printBtn.className = 'btn btn-print';
+  printBtn.textContent = '🖨️ สั่งพิมพ์ (Print)';
+  printBtn.onclick = function() { w.print(); };
+
+  const closeBtn = w.document.createElement('button');
+  closeBtn.className = 'btn btn-close';
+  closeBtn.textContent = 'ปิดหน้าต่าง';
+  closeBtn.onclick = function() { w.close(); };
+
+  topBar.appendChild(printBtn);
+  topBar.appendChild(closeBtn);
+  w.document.body.appendChild(topBar);
+
+  const grid = w.document.createElement('div');
+  grid.className = 'grid';
+
+  items.forEach(x => {
+    const card = w.document.createElement('div');
+    card.className = 'item';
+
+    const img = w.document.createElement('img');
+    img.src = x.img;
+
+    const nameEl = w.document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = x.name;
+
+    const postEl = w.document.createElement('div');
+    postEl.className = 'post';
+    postEl.textContent = x.post;
+
+    card.appendChild(img);
+    card.appendChild(nameEl);
+    card.appendChild(postEl);
+    grid.appendChild(card);
+  });
+
+  w.document.body.appendChild(grid);
+  setTimeout(() => { try { w.focus(); w.print(); } catch (_) {} }, 500);
+}
+
+function apiError(e) {
+  console.error(e);
+  const msg = String(e && e.message ? e.message : e);
+  if (msg.includes('ADMIN_SESSION_EXPIRED')) {
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    showAdmin();
+    return;
+  }
+  showTailwindAlert({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: msg });
+}
+
+function escapeHtml(v) { return String(v==null?'':v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function escapeAttr(v) { return escapeHtml(v); }
+</script>
+</body>
+</html>
